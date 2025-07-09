@@ -55,7 +55,7 @@ export default class DottedMap {
   getPoints(): DottedMapLib.Point[];
   getSVG(settings: DottedMapLib.SvgSettings): string;
   image: {
-    region: DottedMap.Region;
+    region: DottedMapLib.Region;
     width: number;
     height: number;
   };

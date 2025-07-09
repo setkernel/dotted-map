@@ -17,7 +17,7 @@ namespace DottedMapWithoutCountriesLib {
     ystep: number;
   }
 
-  interface Settings extends MapSettings {
+  interface Settings {
     map: Map;
     avoidOuterPins?: false | true;
   }
@@ -63,7 +63,7 @@ export default class DottedMapWithoutCountries {
   getPoints(): DottedMapWithoutCountriesLib.Point[];
   getSVG(settings: DottedMapWithoutCountriesLib.SvgSettings): string;
   image: {
-    region: DottedMap.Region;
+    region: DottedMapWithoutCountriesLib.Region;
     width: number;
     height: number;
   };

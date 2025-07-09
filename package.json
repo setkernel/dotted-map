@@ -3,9 +3,18 @@
   "version": "1.0.3",
   "description": "Create beautiful SVG maps filled with dots for the world or countries - Enhanced with security fixes, performance improvements, and modern tooling",
   "main": "./index.js",
+  "types": "./index.d.ts",
   "exports": {
-    ".": "./index.js",
-    "./without-countries": "./without-countries.js"
+    ".": {
+      "import": "./index.js",
+      "require": "./index.js",
+      "types": "./index.d.ts"
+    },
+    "./without-countries": {
+      "import": "./without-countries.js",
+      "require": "./without-countries.js",
+      "types": "./without-countries.d.ts"
+    }
   },
   "module": "./src/with-countries.js",
   "scripts": {
@@ -14,7 +23,7 @@
     "test:enhanced": "node test.enhanced.js",
     "test:all": "npm test && npm run test:enhanced",
     "dev": "webpack --mode development --watch",
-    "clean": "rm -f index.js without-countries.js",
+    "clean": "node -e \"const fs = require('fs'); ['index.js', 'without-countries.js'].forEach(f => { try { fs.unlinkSync(f); } catch (e) {} });\"",
     "prepack": "npm run clean && npm run build",
     "format": "prettier --write src/**/*.js *.js",
     "format:check": "prettier --check src/**/*.js *.js",
