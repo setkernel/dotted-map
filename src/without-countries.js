@@ -5,7 +5,8 @@ import inside from '@turf/boolean-point-in-polygon';
 const sanitizeColor = (color) => {
   if (typeof color !== 'string') return '#000000';
   // Allow hex colors (#000, #000000), named colors, rgb(), rgba(), hsl(), hsla()
-  const validColorRegex = /^(#[0-9A-Fa-f]{3,6}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\)|hsla\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*,\s*[\d.]+\s*\)|transparent|currentColor|inherit|[a-zA-Z]+)$/;
+  const validColorRegex =
+    /^(#[0-9A-Fa-f]{3,6}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\)|hsla\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*,\s*[\d.]+\s*\)|transparent|currentColor|inherit|[a-zA-Z]+)$/;
   return validColorRegex.test(color.trim()) ? color.trim() : '#000000';
 };
 
@@ -89,18 +90,22 @@ function DottedMapWithoutCountries({ map, avoidOuterPins = false }) {
       radius = 0.5,
     }) {
       // Sanitize main parameters
-      const sanitizedShape = ['circle', 'hexagon'].includes(shape) ? shape : 'circle';
+      const sanitizedShape = ['circle', 'hexagon'].includes(shape)
+        ? shape
+        : 'circle';
       const sanitizedColor = sanitizeColor(color);
       const sanitizedBackgroundColor = sanitizeColor(backgroundColor);
       const sanitizedRadius = sanitizeRadius(radius);
-      
+
       const getPoint = ({ x, y, svgOptions = {} }) => {
         // Sanitize coordinates and options
         const sanitizedX = sanitizeNumericValue(x, 0);
         const sanitizedY = sanitizeNumericValue(y, 0);
-        const pointRadius = sanitizeRadius(svgOptions.radius || sanitizedRadius);
+        const pointRadius = sanitizeRadius(
+          svgOptions.radius || sanitizedRadius,
+        );
         const pointColor = sanitizeColor(svgOptions.color || sanitizedColor);
-        
+
         if (sanitizedShape === 'circle') {
           return `<circle cx="${sanitizedX}" cy="${sanitizedY}" r="${pointRadius}" fill="${pointColor}" />`;
         } else if (sanitizedShape === 'hexagon') {
@@ -131,7 +136,7 @@ function DottedMapWithoutCountries({ map, avoidOuterPins = false }) {
       height,
     },
   };
-  
+
   return mapInstance;
 }
 
