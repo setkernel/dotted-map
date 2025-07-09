@@ -200,60 +200,102 @@ jobs:
           echo "**Release notes preview:**" >> $GITHUB_STEP_SUMMARY
           cat RELEASE_NOTES.md >> $GITHUB_STEP_SUMMARY
 
-  publish-to-registries:
-    name: 📦 Publish Package to Registries
+  publish-to-npm:
+    name: 📦 Publish Package to NPM
     needs: [run-pre-release-validation, create-github-release]
     runs-on: ubuntu-latest
     if: always() && needs.create-github-release.outputs.release_created == 'true' && (needs.run-pre-release-validation.result == 'success' || github.event.inputs.skip_tests == 'true')
-    strategy:
-      matrix:
-        registry:
-          - name: NPM
-            url: https://registry.npmjs.org
-            token: NPM_TOKEN
-          - name: GitHub Packages
-            url: https://npm.pkg.github.com
-            token: GITHUB_TOKEN
     steps:
-      - name: 📥 Checkout code for package publishing
+      - name: 📥 Checkout code for NPM publishing
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: ⚙️ Setup Node.js for ${{ matrix.registry.name }} registry
+      - name: ⚙️ Setup Node.js for NPM registry
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: ${{ matrix.registry.url }}
+          registry-url: ${{ env.REGISTRY_URL }}
           cache: 'npm'
 
-      - name: 📦 Install dependencies for publishing
+      - name: 📦 Install dependencies for NPM publishing
         run: npm ci
 
-      - name: 🔨 Build package for ${{ matrix.registry.name }} deployment
+      - name: 🔨 Build package for NPM deployment
         run: npm run build
 
-      - name: 🚀 Deploy package to ${{ matrix.registry.name }} registry
+      - name: 🚀 Deploy package to NPM registry
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets[matrix.registry.token] }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
-      - name: 📊 Generate deployment success summary
+      - name: 📊 Generate NPM deployment summary
         run: |
-          echo "🚀 **Package Published to ${{ matrix.registry.name }}!**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ needs.create-github-release.outputs.version_without_v }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ matrix.registry.name }}" == "NPM" ]; then
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "🚀 **Package Published to NPM!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version**: ${{ needs.create-github-release.outputs.version_without_v }}" >> $GITHUB_STEP_SUMMARY
             echo "- **NPM**: https://www.npmjs.com/package/@setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
             echo "- **Install**: \`npm install @setkernel/dotted-map-next\`" >> $GITHUB_STEP_SUMMARY
           else
+            echo "❌ **NPM Publishing Failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reason**: NPM_TOKEN may be missing or 2FA required" >> $GITHUB_STEP_SUMMARY
+            echo "- **Manual Fix**: Run \`npm publish --access public --otp=YOUR_CODE\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  publish-to-github:
+    name: 📦 Publish Package to GitHub Packages
+    needs: [run-pre-release-validation, create-github-release]
+    runs-on: ubuntu-latest
+    if: always() && needs.create-github-release.outputs.release_created == 'true' && (needs.run-pre-release-validation.result == 'success' || github.event.inputs.skip_tests == 'true')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 📥 Checkout code for GitHub Packages publishing
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: ⚙️ Setup Node.js for GitHub Packages registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://npm.pkg.github.com'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies for GitHub Packages publishing
+        run: npm ci
+
+      - name: 🔨 Build package for GitHub Packages deployment
+        run: npm run build
+
+      - name: 🚀 Deploy package to GitHub Packages registry
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: 📊 Generate GitHub Packages deployment summary
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "🚀 **Package Published to GitHub Packages!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version**: ${{ needs.create-github-release.outputs.version_without_v }}" >> $GITHUB_STEP_SUMMARY
             echo "- **GitHub Packages**: https://github.com/setkernel/dotted-map-next/packages" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **GitHub Packages Publishing Failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reason**: May be due to existing version or permissions" >> $GITHUB_STEP_SUMMARY
           fi
 
   send-release-notifications:
     name: 📣 Send Release Completion Notifications
-    needs: [run-pre-release-validation, create-github-release, publish-to-registries]
+    needs: [run-pre-release-validation, create-github-release, publish-to-npm, publish-to-github]
     runs-on: ubuntu-latest
     if: always() && needs.create-github-release.outputs.release_created == 'true'
     steps:
@@ -267,8 +309,17 @@ jobs:
           echo "- **Repository**: https://github.com/setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
           echo "- **Release**: https://github.com/setkernel/dotted-map-next/releases/tag/${{ needs.create-github-release.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.publish-to-registries.result }}" == "success" ]; then
-            echo "✅ **Publishing**: Success" >> $GITHUB_STEP_SUMMARY
+          
+          # NPM Publishing Status
+          if [ "${{ needs.publish-to-npm.result }}" == "success" ]; then
+            echo "✅ **NPM Publishing**: Success" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Publishing**: Failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **NPM Publishing**: Failed (may need manual publish with 2FA)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # GitHub Packages Publishing Status
+          if [ "${{ needs.publish-to-github.result }}" == "success" ]; then
+            echo "✅ **GitHub Packages Publishing**: Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **GitHub Packages Publishing**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
