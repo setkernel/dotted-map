@@ -1,4 +1,4 @@
-name: Dependency Management
+name: 🔒 Dependency Security & Updates
 
 on:
   schedule:
@@ -7,23 +7,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  audit:
-    name: Security Audit
+  run-security-audit:
+    name: 🔒 Security Vulnerability Audit
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout repository for security scan
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: ⚙️ Setup Node.js environment for audit
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies for security analysis
         run: npm ci
 
-      - name: Run security audit
+      - name: 🔎 Execute comprehensive security audit
         run: |
           echo "🔍 Running security audit..." >> $GITHUB_STEP_SUMMARY
           npm audit --audit-level=high --json > audit-results.json || true
@@ -44,21 +44,21 @@ jobs:
             echo "✅ **No high/critical vulnerabilities found**" >> $GITHUB_STEP_SUMMARY
           fi
 
-  update-dependencies:
-    name: Update Dependencies
+  update-outdated-dependencies:
+    name: 🔄 Update Outdated Dependencies
     runs-on: ubuntu-latest
-    needs: audit
+    needs: run-security-audit
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout repository for dependency updates
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: ⚙️ Setup Node.js environment for updates
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'npm'
 
-      - name: Check for outdated packages
+      - name: 🔍 Scan for outdated package dependencies
         id: outdated
         run: |
           npm outdated --json > outdated.json || true
@@ -75,19 +75,19 @@ jobs:
             echo "✅ **All packages are up to date**" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Update dependencies
+      - name: ⬆️ Apply dependency updates and security fixes
         if: steps.outdated.outputs.outdated_count > 0
         run: |
           npm update
           npm audit fix --audit-level=high || true
 
-      - name: Run tests after update
+      - name: 🧪 Validate updates with comprehensive testing
         if: steps.outdated.outputs.outdated_count > 0
         run: |
           npm run build
           npm run test:all
 
-      - name: Create PR for dependency updates
+      - name: 📝 Create pull request for dependency updates
         if: steps.outdated.outputs.outdated_count > 0
         uses: peter-evans/create-pull-request@v5
         with:

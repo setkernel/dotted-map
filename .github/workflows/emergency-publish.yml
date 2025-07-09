@@ -1,4 +1,4 @@
-name: Emergency Publish
+name: 🆘 Emergency Hotfix Publisher
 
 on:
   workflow_dispatch:
@@ -16,28 +16,28 @@ env:
   NODE_VERSION: '20.x'
 
 jobs:
-  emergency-publish:
-    name: Emergency Publish
+  execute-emergency-publish:
+    name: 🚨 Execute Emergency Hotfix Publication
     runs-on: ubuntu-latest
     if: github.event.inputs.confirmation == 'EMERGENCY'
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout repository for emergency publish
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: ⚙️ Setup Node.js environment for emergency deployment
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies for emergency build
         run: npm ci
 
-      - name: Build package
+      - name: 🔨 Build package for emergency deployment
         run: npm run build
 
-      - name: Quick test
+      - name: ⚡ Execute rapid testing for emergency validation
         run: |
           npm test
           node -e "
@@ -45,12 +45,12 @@ jobs:
             console.log('✅ Emergency publish basic test passed');
           "
 
-      - name: Publish to NPM
+      - name: 🚨 Deploy emergency hotfix to NPM registry
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create emergency summary
+      - name: 📊 Generate emergency publication summary
         run: |
           echo "🚨 **EMERGENCY PUBLISH COMPLETED**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -62,12 +62,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **Follow-up required**: Create proper release and update changelog" >> $GITHUB_STEP_SUMMARY
 
-  validation-failed:
-    name: Emergency Publish Blocked
+  block-invalid-emergency-request:
+    name: 🚫 Block Invalid Emergency Publication Request
     runs-on: ubuntu-latest
     if: github.event.inputs.confirmation != 'EMERGENCY'
     steps:
-      - name: Block invalid emergency publish
+      - name: 🚩 Reject emergency publish due to invalid confirmation
         run: |
           echo "❌ **EMERGENCY PUBLISH BLOCKED**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

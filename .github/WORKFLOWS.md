@@ -4,18 +4,26 @@ This repository uses a streamlined workflow system designed to prevent conflicts
 
 ## Workflow Overview
 
-### 1. **Continuous Integration** (`ci.yml`)
+### 1. **🔄 Continuous Integration** (`ci.yml`)
 - **Trigger**: Push to main, Pull requests
 - **Purpose**: Automated testing and quality checks
+- **Jobs**:
+  - 🧪 **Quality Assurance & Testing**: Comprehensive testing, building, and validation
+  - 🤖 **Auto-merge Dependabot PRs**: Automatically merges dependency updates if tests pass
 - **Features**:
   - Runs tests and builds on every push/PR
   - Auto-merges Dependabot PRs if tests pass
   - Uploads build artifacts for main branch commits
   - Ignores documentation-only changes
 
-### 2. **Release & Publish** (`release-and-publish.yml`)
+### 2. **🚀 Release & Publish Package** (`release-and-publish.yml`)
 - **Trigger**: Manual workflow dispatch only
 - **Purpose**: Unified release creation and package publishing
+- **Jobs**:
+  - 🔍 **Pre-Release Validation & Testing**: Comprehensive validation before release
+  - 🏷️ **Create GitHub Release**: Version bumping and GitHub release creation
+  - 📦 **Publish Package to Registries**: Parallel publishing to NPM and GitHub Packages
+  - 📣 **Send Release Completion Notifications**: Final status reporting
 - **Features**:
   - Version bumping (patch/minor/major)
   - Automatic changelog generation
@@ -24,18 +32,24 @@ This repository uses a streamlined workflow system designed to prevent conflicts
   - Emergency skip tests option
   - Comprehensive status reporting
 
-### 3. **Dependency Management** (`dependencies.yml`)
+### 3. **🔒 Dependency Security & Updates** (`dependencies.yml`)
 - **Trigger**: Weekly schedule (Mondays 9 AM UTC) + Manual
-- **Purpose**: Automated dependency updates
+- **Purpose**: Automated dependency updates and security auditing
+- **Jobs**:
+  - 🔒 **Security Vulnerability Audit**: Scans for high/critical vulnerabilities
+  - 🔄 **Update Outdated Dependencies**: Updates dependencies and creates PR
 - **Features**:
   - Security audit with high/critical vulnerability detection
   - Automated dependency updates via PR
   - Full test suite validation after updates
   - Auto-merge eligible for CI-passing dependency PRs
 
-### 4. **Emergency Publish** (`emergency-publish.yml`)
+### 4. **🆘 Emergency Hotfix Publisher** (`emergency-publish.yml`)
 - **Trigger**: Manual workflow dispatch with confirmation
 - **Purpose**: Critical hotfix publishing
+- **Jobs**:
+  - 🚨 **Execute Emergency Hotfix Publication**: Rapid deployment with minimal testing
+  - 🚫 **Block Invalid Emergency Publication Request**: Safety validation
 - **Features**:
   - Requires "EMERGENCY" confirmation
   - Bypasses normal release process
@@ -46,21 +60,20 @@ This repository uses a streamlined workflow system designed to prevent conflicts
 ## Usage Instructions
 
 ### Normal Release Process
-1. **Go to Actions** → **Release & Publish**
+1. **Go to Actions** → **🚀 Release & Publish Package**
 2. **Click "Run workflow"**
 3. **Select version type**: patch/minor/major
 4. **Optional**: Enable dry run to preview
 5. **Click "Run workflow"**
 
 The workflow will:
-- Run full test suite
-- Bump version in package.json
-- Create GitHub release with changelog
-- Publish to NPM and GitHub Packages
-- Provide comprehensive status reports
+- 🔍 **Pre-Release Validation**: Run comprehensive tests and validation
+- 🏷️ **Create GitHub Release**: Bump version and create release with changelog
+- 📦 **Publish to Registries**: Deploy to NPM and GitHub Packages in parallel
+- 📣 **Send Notifications**: Provide comprehensive status reports
 
 ### Emergency Release
-1. **Go to Actions** → **Emergency Publish**
+1. **Go to Actions** → **🆘 Emergency Hotfix Publisher**
 2. **Type "EMERGENCY"** in confirmation field
 3. **Provide reason** for emergency publish
 4. **Click "Run workflow"**
@@ -69,13 +82,13 @@ The workflow will:
 
 ### Testing Changes
 1. **Create PR** against main branch
-2. **CI workflow** runs automatically
+2. **🔄 CI workflow** runs automatically with 🧪 **Quality Assurance & Testing**
 3. **Review test results** before merging
 4. **Merge PR** when tests pass
 
 ### Dependency Updates
-- **Automatic**: Runs every Monday, creates PR if updates available
-- **Manual**: Go to Actions → Dependency Management → Run workflow
+- **Automatic**: Runs every Monday with 🔒 **Security Audit** and 🔄 **Updates**
+- **Manual**: Go to Actions → 🔒 **Dependency Security & Updates** → Run workflow
 
 ## Workflow Features
 
@@ -136,7 +149,19 @@ Configure these in repository settings:
 The new streamlined system replaces:
 - ❌ `publish.yml` (had circular trigger issues)
 - ❌ `release.yml` (caused version conflicts)
-- ✅ `ci.yml` (clean CI/CD)
-- ✅ `release-and-publish.yml` (unified process)
-- ✅ `dependencies.yml` (enhanced)
-- ✅ `emergency-publish.yml` (new safety feature)
+- ✅ `ci.yml` → **🔄 Continuous Integration** (clean CI/CD)
+- ✅ `release-and-publish.yml` → **🚀 Release & Publish Package** (unified process)
+- ✅ `dependencies.yml` → **🔒 Dependency Security & Updates** (enhanced)
+- ✅ `emergency-publish.yml` → **🆘 Emergency Hotfix Publisher** (new safety feature)
+
+## Workflow Architecture
+
+For a complete visual representation of workflow dependencies and job flows, see:
+- 📊 **[Workflow Architecture Diagram](.github/WORKFLOW_DIAGRAM.md)**
+
+### Key Architecture Benefits:
+- ✅ **No Circular Dependencies**: Each workflow is properly isolated
+- ✅ **Clear Job Dependencies**: Sequential execution with proper `needs:` chains
+- ✅ **Parallel Execution**: Publishing happens simultaneously to multiple registries
+- ✅ **Fail-Safe Design**: Emergency workflows have confirmation requirements
+- ✅ **Manual Release Control**: Prevents accidental version bumps
