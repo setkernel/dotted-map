@@ -1,6 +1,6 @@
 {
   "name": "@setkernel/dotted-map-next",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Create beautiful SVG maps filled with dots for the world or countries - Enhanced with security fixes, performance improvements, and modern tooling",
   "main": "./index.js",
   "exports": {
