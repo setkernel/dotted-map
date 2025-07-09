@@ -7,6 +7,13 @@ on:
     branches: [main]
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish to npm'
+        required: false
+        default: false
+        type: boolean
 
 env:
   NODE_VERSION: '20.x'
@@ -82,7 +89,7 @@ jobs:
     name: Publish to NPM
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: (github.event_name == 'release' && github.event.action == 'published') || github.event.inputs.force_publish == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -118,7 +125,7 @@ jobs:
     name: Publish to GitHub Packages
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: (github.event_name == 'release' && github.event.action == 'published') || github.event.inputs.force_publish == 'true'
     permissions:
       contents: read
       packages: write
