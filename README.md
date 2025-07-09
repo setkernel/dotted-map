@@ -1,4 +1,18 @@
-[![npm version](https://badge.fury.io/js/@setkernel%2F@setkernel/dotted-map-next.svg)](https://www.npmjs.com/package/@setkernel/dotted-map-next)
+<!-- Status Badges -->
+<div align="center">
+
+[![npm version](https://badge.fury.io/js/@setkernel%2Fdotted-map-next.svg)](https://www.npmjs.com/package/@setkernel/dotted-map-next)
+[![CI](https://github.com/setkernel/dotted-map-next/workflows/🔄%20Continuous%20Integration/badge.svg)](https://github.com/setkernel/dotted-map-next/actions/workflows/ci.yml)
+[![Dependencies](https://github.com/setkernel/dotted-map-next/workflows/🔒%20Dependency%20Security%20%26%20Updates/badge.svg)](https://github.com/setkernel/dotted-map-next/actions/workflows/dependencies.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/node/v/@setkernel/dotted-map-next.svg)](https://nodejs.org/)
+[![NPM Downloads](https://img.shields.io/npm/dm/@setkernel/dotted-map-next.svg)](https://www.npmjs.com/package/@setkernel/dotted-map-next)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@setkernel/dotted-map-next.svg)](https://bundlephobia.com/package/@setkernel/dotted-map-next)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![Security](https://img.shields.io/badge/Security-Audited-green.svg)](https://github.com/setkernel/dotted-map-next/security)
+[![Maintenance](https://img.shields.io/badge/Maintained-Yes-green.svg)](https://github.com/setkernel/dotted-map-next/graphs/commit-activity)
+
+</div>
 
 # @setkernel/dotted-map-next
 
