@@ -1,7 +1,9 @@
 import proj4 from 'proj4';
 import inside from '@turf/boolean-point-in-polygon';
-import geojsonWorld from './countries.geo.json';
 import DottedMapWithoutCountries from './without-countries';
+
+// Import JSON data - webpack will handle this correctly
+import geojsonWorld from './countries.geo.json';
 
 const geojsonByCountry = geojsonWorld.features.reduce((countries, feature) => {
   countries[feature.id] = feature;
@@ -69,6 +71,51 @@ const computeGeojsonBox = (geojson) => {
   }
 };
 
+const validateMapSettings = ({ height, width, countries, region, grid }) => {
+  if (height <= 0 && width <= 0) {
+    throw new Error('Either height or width must be positive');
+  }
+  
+  if (height !== undefined && (typeof height !== 'number' || height < 0 || height > 10000)) {
+    throw new Error('Height must be a number between 0 and 10000');
+  }
+  
+  if (width !== undefined && (typeof width !== 'number' || width < 0 || width > 10000)) {
+    throw new Error('Width must be a number between 0 and 10000');
+  }
+  
+  if (countries && !Array.isArray(countries)) {
+    throw new Error('Countries must be an array');
+  }
+  
+  if (countries && countries.length > 0) {
+    const validCountries = new Set(Object.keys(geojsonByCountry));
+    const invalidCountries = countries.filter(c => !validCountries.has(c));
+    if (invalidCountries.length > 0) {
+      throw new Error(`Invalid country codes: ${invalidCountries.join(', ')}`);
+    }
+  }
+  
+  if (grid && !['vertical', 'diagonal'].includes(grid)) {
+    throw new Error('Grid must be "vertical" or "diagonal"');
+  }
+  
+  if (region) {
+    if (typeof region !== 'object' || !region.lat || !region.lng) {
+      throw new Error('Region must have lat and lng properties');
+    }
+    
+    if (typeof region.lat.min !== 'number' || typeof region.lat.max !== 'number' ||
+        typeof region.lng.min !== 'number' || typeof region.lng.max !== 'number') {
+      throw new Error('Region coordinates must be numbers');
+    }
+    
+    if (region.lat.min >= region.lat.max || region.lng.min >= region.lng.max) {
+      throw new Error('Region min values must be less than max values');
+    }
+  }
+};
+
 const getMap = ({
   height = 0,
   width = 0,
@@ -76,6 +123,8 @@ const getMap = ({
   region,
   grid = 'vertical',
 }) => {
+  validateMapSettings({ height, width, countries, region, grid });
+  
   if (height <= 0 && width <= 0) {
     throw new Error('height or width is required');
   }
@@ -149,6 +198,7 @@ const getMap = ({
     height,
     width,
     ystep,
+    poly, // include polygon data for avoidOuterPins feature
   };
 };
 
@@ -172,9 +222,15 @@ const getCacheKey = ({
 
 function DottedMap({ avoidOuterPins = false, ...args }) {
   const cacheKey = getCacheKey(args);
-  const map = CACHE[cacheKey] || getMap(args);
-
-  return new DottedMapWithoutCountries({ avoidOuterPins, map });
+  
+  if (!CACHE[cacheKey]) {
+    CACHE[cacheKey] = getMap(args);
+  }
+  
+  return new DottedMapWithoutCountries({ 
+    avoidOuterPins, 
+    map: CACHE[cacheKey] 
+  });
 }
 
 export default DottedMap;

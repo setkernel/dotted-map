@@ -1,7 +1,7 @@
 {
-  "name": "dotted-map",
-  "version": "2.2.3",
-  "description": "Create a SVG map filled with dots for the world or countries",
+  "name": "@setkernel/dotted-map-next",
+  "version": "1.0.0",
+  "description": "Create beautiful SVG maps filled with dots for the world or countries - Enhanced with security fixes, performance improvements, and modern tooling",
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
@@ -10,7 +10,15 @@
   "module": "./src/with-countries.js",
   "scripts": {
     "build": "webpack",
-    "test": "node test.js"
+    "test": "node test.js",
+    "test:enhanced": "node test.enhanced.js",
+    "test:all": "npm test && npm run test:enhanced",
+    "dev": "webpack --mode development --watch",
+    "clean": "rm -f index.js without-countries.js",
+    "prepack": "npm run clean && npm run build",
+    "format": "prettier --write src/**/*.js *.js",
+    "format:check": "prettier --check src/**/*.js *.js",
+    "size": "ls -lh index.js without-countries.js"
   },
   "keywords": [
     "map",
@@ -19,18 +27,48 @@
     "dotted",
     "world",
     "countries",
-    "country"
+    "country",
+    "visualization",
+    "geography",
+    "geojson",
+    "data-visualization",
+    "interactive",
+    "charts",
+    "graphics",
+    "secure",
+    "performance"
   ],
   "author": "Basile Bruneau <basile@bruneau.email>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NTag/dotted-map.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NTag/dotted-map/issues"
+  },
+  "homepage": "https://github.com/NTag/dotted-map#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "index.js",
+    "without-countries.js",
+    "index.d.ts",
+    "without-countries.d.ts",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
-    "@turf/boolean-point-in-polygon": "^6.0.1",
-    "proj4": "^2.6.1"
+    "@turf/boolean-point-in-polygon": "7.2.0",
+    "proj4": "2.19.5"
   },
   "devDependencies": {
-    "prettier": "^2.0.5",
-    "webpack": "^5.33.2",
-    "webpack-cli": "^4.6.0"
+    "prettier": "3.6.2",
+    "terser-webpack-plugin": "^5.3.14",
+    "webpack": "5.99.9",
+    "webpack-cli": "6.0.1"
   },
   "sideEffects": false
 }
