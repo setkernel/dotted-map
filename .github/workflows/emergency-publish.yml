@@ -14,6 +14,7 @@ on:
 
 env:
   NODE_VERSION: '20.x'
+  REGISTRY_URL: 'https://registry.npmjs.org'
 
 jobs:
   execute-emergency-publish:
@@ -23,12 +24,14 @@ jobs:
     steps:
       - name: 📥 Checkout repository for emergency publish
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: ⚙️ Setup Node.js environment for emergency deployment
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: ${{ env.REGISTRY_URL }}
           cache: 'npm'
 
       - name: 📦 Install dependencies for emergency build

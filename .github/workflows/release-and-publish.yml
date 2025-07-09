@@ -25,6 +25,8 @@ on:
 
 env:
   NODE_VERSION: '20.x'
+  REGISTRY_URL: 'https://registry.npmjs.org'
+  ARTIFACT_RETENTION_DAYS: 30
 
 jobs:
   run-pre-release-validation:
@@ -83,6 +85,7 @@ jobs:
             without-countries.js
             index.d.ts
             without-countries.d.ts
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
 
   create-github-release:
     name: 🏷️ Create GitHub Release
@@ -214,6 +217,8 @@ jobs:
     steps:
       - name: 📥 Checkout code for package publishing
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: ⚙️ Setup Node.js for ${{ matrix.registry.name }} registry
         uses: actions/setup-node@v4

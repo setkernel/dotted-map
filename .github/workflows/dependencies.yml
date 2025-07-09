@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: 📥 Checkout repository for security scan
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: ⚙️ Setup Node.js environment for audit
         uses: actions/setup-node@v4
@@ -54,6 +56,8 @@ jobs:
     steps:
       - name: 📥 Checkout repository for dependency updates
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: ⚙️ Setup Node.js environment for updates
         uses: actions/setup-node@v4
@@ -92,7 +96,7 @@ jobs:
 
       - name: 📝 Create pull request for dependency updates
         if: steps.outdated.outputs.outdated_count > 0
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'chore: update dependencies'
