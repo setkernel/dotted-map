@@ -42,12 +42,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NTag/dotted-map.git"
+    "url": "https://github.com/setkernel/dotted-map-next.git"
   },
   "bugs": {
-    "url": "https://github.com/NTag/dotted-map/issues"
+    "url": "https://github.com/setkernel/dotted-map-next/issues"
   },
-  "homepage": "https://github.com/NTag/dotted-map#readme",
+  "homepage": "https://github.com/setkernel/dotted-map-next#readme",
   "engines": {
     "node": ">=14.0.0"
   },
