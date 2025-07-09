@@ -6,6 +6,9 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch:
 
+env:
+  NODE_VERSION: '20.x'
+
 jobs:
   run-security-audit:
     name: 🔒 Security Vulnerability Audit
@@ -17,7 +20,7 @@ jobs:
       - name: ⚙️ Setup Node.js environment for audit
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: 📦 Install dependencies for security analysis
@@ -55,7 +58,7 @@ jobs:
       - name: ⚙️ Setup Node.js environment for updates
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: 🔍 Scan for outdated package dependencies
