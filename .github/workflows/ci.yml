@@ -1,0 +1,94 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '.github/**'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  test:
+    name: Test & Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting and formatting checks
+        run: |
+          npm run format:check || echo "⚠️  Code formatting issues found"
+          
+      - name: Build package
+        run: npm run build
+
+      - name: Run basic tests
+        run: npm test
+
+      - name: Run enhanced test suite
+        run: npm run test:enhanced
+
+      - name: Check bundle sizes
+        run: |
+          INDEX_SIZE=$(stat -c%s "index.js")
+          WITHOUT_COUNTRIES_SIZE=$(stat -c%s "without-countries.js")
+          echo "📦 Bundle Sizes:"
+          echo "  - index.js: $(($INDEX_SIZE / 1024))KB"
+          echo "  - without-countries.js: $(($WITHOUT_COUNTRIES_SIZE / 1024))KB"
+          
+          if [ $INDEX_SIZE -gt 300000 ]; then
+            echo "⚠️  WARNING: index.js is larger than 300KB"
+          fi
+          
+          if [ $WITHOUT_COUNTRIES_SIZE -gt 5000 ]; then
+            echo "⚠️  WARNING: without-countries.js is larger than 5KB"
+          fi
+
+      - name: Test package exports
+        run: |
+          node -e "
+            const DottedMap = require('./index').default;
+            const { getMapJSON } = require('./index');
+            const DottedMapWithoutCountries = require('./without-countries').default;
+            console.log('✅ All package exports working correctly');
+          "
+
+      - name: Upload build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ github.sha }}
+          path: |
+            index.js
+            without-countries.js
+            index.d.ts
+            without-countries.d.ts
+          retention-days: 30
+
+  auto-merge-dependabot:
+    name: Auto-merge Dependabot PRs
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: needs.test.result == 'success' && github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'
+    steps:
+      - name: Enable auto-merge for Dependabot PRs
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

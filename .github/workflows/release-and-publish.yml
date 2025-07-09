@@ -1,0 +1,267 @@
+name: Release & Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      skip_tests:
+        description: 'Skip tests (for emergency releases)'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Dry run (test without creating release)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  validate-and-test:
+    name: Validate & Test
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_tests != 'true'
+    outputs:
+      current_version: ${{ steps.version.outputs.current_version }}
+      changes_count: ${{ steps.changes.outputs.changes_count }}
+      last_tag: ${{ steps.changes.outputs.last_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Get current version and changes
+        id: version
+        run: |
+          echo "current_version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Check changes since last release
+        id: changes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "changes_count=0" >> $GITHUB_OUTPUT
+            echo "last_tag=none" >> $GITHUB_OUTPUT
+          else
+            CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+            echo "changes_count=$CHANGES" >> $GITHUB_OUTPUT
+            echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests and build
+        run: |
+          npm run format:check || echo "⚠️ Code formatting issues found"
+          npm run build
+          npm run test:all
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ github.sha }}
+          path: |
+            index.js
+            without-countries.js
+            index.d.ts
+            without-countries.d.ts
+
+  release:
+    name: Create Release
+    needs: [validate-and-test]
+    runs-on: ubuntu-latest
+    if: always() && (needs.validate-and-test.result == 'success' || github.event.inputs.skip_tests == 'true')
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      version_without_v: ${{ steps.version.outputs.version_without_v }}
+      release_created: ${{ steps.release.outputs.release_created }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: version
+        run: |
+          VERSION_TYPE="${{ github.event.inputs.version_type || 'patch' }}"
+          NEW_VERSION=$(npm version $VERSION_TYPE --no-git-tag-version)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_without_v=${NEW_VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --oneline --pretty=format:"- %s" HEAD)
+          else
+            COMMITS=$(git log --oneline --pretty=format:"- %s" $LAST_TAG..HEAD)
+          fi
+          
+          cat > RELEASE_NOTES.md << EOF
+          ## What's Changed
+          
+          $COMMITS
+          
+          ## Installation
+          
+          \`\`\`bash
+          npm install @setkernel/dotted-map-next@${{ steps.version.outputs.version_without_v }}
+          \`\`\`
+          
+          ## Usage
+          
+          \`\`\`javascript
+          const DottedMap = require('@setkernel/dotted-map-next').default;
+          const map = new DottedMap({ height: 60, grid: 'diagonal' });
+          \`\`\`
+          
+          **Full Changelog**: https://github.com/setkernel/dotted-map-next/compare/$LAST_TAG...${{ steps.version.outputs.new_version }}
+          EOF
+
+      - name: Build package for release
+        run: npm run build
+
+      - name: Commit version bump
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+          git push origin main
+
+      - name: Create Release
+        id: release
+        if: github.event.inputs.dry_run != 'true'
+        uses: ncipollo/create-release@v1
+        with:
+          tag: ${{ steps.version.outputs.new_version }}
+          name: ${{ steps.version.outputs.new_version }}
+          bodyFile: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set release created flag
+        id: release_flag
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "release_created=false" >> $GITHUB_OUTPUT
+          else
+            echo "release_created=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Dry Run Summary
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          echo "🧪 **DRY RUN MODE - No Release Created**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Would create version**: ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes since last tag**: ${{ needs.validate-and-test.outputs.changes_count || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Last tag**: ${{ needs.validate-and-test.outputs.last_tag || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release notes preview:**" >> $GITHUB_STEP_SUMMARY
+          cat RELEASE_NOTES.md >> $GITHUB_STEP_SUMMARY
+
+  publish:
+    name: Publish Package
+    needs: [validate-and-test, release]
+    runs-on: ubuntu-latest
+    if: always() && needs.release.outputs.release_created == 'true' && (needs.validate-and-test.result == 'success' || github.event.inputs.skip_tests == 'true')
+    strategy:
+      matrix:
+        registry:
+          - name: NPM
+            url: https://registry.npmjs.org
+            token: NPM_TOKEN
+          - name: GitHub Packages
+            url: https://npm.pkg.github.com
+            token: GITHUB_TOKEN
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ matrix.registry.url }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish to ${{ matrix.registry.name }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets[matrix.registry.token] }}
+
+      - name: Create deployment summary
+        run: |
+          echo "🚀 **Package Published to ${{ matrix.registry.name }}!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.release.outputs.version_without_v }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ matrix.registry.name }}" == "NPM" ]; then
+            echo "- **NPM**: https://www.npmjs.com/package/@setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+            echo "- **Install**: \`npm install @setkernel/dotted-map-next\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **GitHub Packages**: https://github.com/setkernel/dotted-map-next/packages" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  notify:
+    name: Release Notification
+    needs: [validate-and-test, release, publish]
+    runs-on: ubuntu-latest
+    if: always() && needs.release.outputs.release_created == 'true'
+    steps:
+      - name: Create final summary
+        run: |
+          echo "🎉 **Release Complete!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.release.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Previous Version**: ${{ needs.validate-and-test.outputs.current_version || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: https://github.com/setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release**: https://github.com/setkernel/dotted-map-next/releases/tag/${{ needs.release.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.publish.result }}" == "success" ]; then
+            echo "✅ **Publishing**: Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Publishing**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi

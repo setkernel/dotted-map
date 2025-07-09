@@ -1,0 +1,77 @@
+name: Emergency Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "EMERGENCY" to confirm emergency publish'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for emergency publish'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  emergency-publish:
+    name: Emergency Publish
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirmation == 'EMERGENCY'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Quick test
+        run: |
+          npm test
+          node -e "
+            const DottedMap = require('./index').default;
+            console.log('✅ Emergency publish basic test passed');
+          "
+
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create emergency summary
+        run: |
+          echo "🚨 **EMERGENCY PUBLISH COMPLETED**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $(node -p "require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reason**: ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Published by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Follow-up required**: Create proper release and update changelog" >> $GITHUB_STEP_SUMMARY
+
+  validation-failed:
+    name: Emergency Publish Blocked
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirmation != 'EMERGENCY'
+    steps:
+      - name: Block invalid emergency publish
+        run: |
+          echo "❌ **EMERGENCY PUBLISH BLOCKED**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Emergency publish requires typing 'EMERGENCY' in the confirmation field." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "For normal releases, use the 'Release & Publish' workflow instead." >> $GITHUB_STEP_SUMMARY
+          exit 1
