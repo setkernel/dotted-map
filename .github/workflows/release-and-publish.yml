@@ -89,10 +89,12 @@ jobs:
     needs: [run-pre-release-validation]
     runs-on: ubuntu-latest
     if: always() && (needs.run-pre-release-validation.result == 'success' || github.event.inputs.skip_tests == 'true')
+    permissions:
+      contents: write
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
       version_without_v: ${{ steps.version.outputs.version_without_v }}
-      release_created: ${{ steps.release.outputs.release_created }}
+      release_created: ${{ steps.release_flag.outputs.release_created }}
     steps:
       - name: 📥 Checkout repository for release creation
         uses: actions/checkout@v4
@@ -165,7 +167,7 @@ jobs:
       - name: 🏷️ Create GitHub release with changelog
         id: release
         if: github.event.inputs.dry_run != 'true'
-        uses: ncipollo/create-release@v1
+        uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.version.outputs.new_version }}
           name: ${{ steps.version.outputs.new_version }}

@@ -179,6 +179,13 @@ graph TD
 3. **Dependencies Workflow**: Schedule/Manual only, creates PRs that trigger CI
 4. **Emergency Workflow**: Manual with confirmation, completely isolated
 
+### ✅ GitHub Actions Compliance
+
+1. **Release Creation**: Uses `ncipollo/release-action@v1` with proper permissions
+2. **Permissions**: `contents: write` permission added for release creation
+3. **Token Management**: Uses `GITHUB_TOKEN` for authentication
+4. **Output Handling**: Correctly manages action outputs and job dependencies
+
 ### ✅ Proper Job Dependencies
 
 1. **Sequential jobs**: Each job waits for prerequisites using `needs:`
