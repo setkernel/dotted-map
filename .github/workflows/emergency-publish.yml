@@ -16,12 +16,24 @@ env:
   NODE_VERSION: '20.x'
   REGISTRY_URL: 'https://registry.npmjs.org'
 
+concurrency:
+  group: emergency-publish
+  cancel-in-progress: false
+
 jobs:
   execute-emergency-publish:
     name: 🚨 Execute Emergency Hotfix Publication
     runs-on: ubuntu-latest
-    if: github.event.inputs.confirmation == 'EMERGENCY'
+    if: github.event.inputs.confirmation != null && (github.event.inputs.confirmation == 'EMERGENCY' || github.event.inputs.confirmation == 'emergency')
     steps:
+      - name: 🔍 Validate emergency inputs
+        run: |
+          REASON="${{ github.event.inputs.reason }}"
+          if [ -z "$REASON" ] || [ ${#REASON} -lt 10 ]; then
+            echo "❌ Emergency reason must be at least 10 characters"
+            exit 1
+          fi
+          echo "✅ Emergency reason validated: $REASON"
       - name: 📥 Checkout repository for emergency publish
         uses: actions/checkout@v4
         with:
@@ -37,8 +49,39 @@ jobs:
       - name: 📦 Install dependencies for emergency build
         run: npm ci
 
+      - name: 🔐 Validate NPM token
+        run: |
+          if ! npm whoami 2>/dev/null; then
+            echo "❌ NPM token validation failed"
+            exit 1
+          fi
+          echo "✅ NPM token validated"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🔍 Check version doesn't exist on NPM
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view @setkernel/dotted-map-next@$VERSION version 2>/dev/null; then
+            echo "❌ Version $VERSION already exists on NPM"
+            exit 1
+          fi
+          echo "✅ Version $VERSION is available for publishing"
+
       - name: 🔨 Build package for emergency deployment
         run: npm run build
+
+      - name: 🔍 Verify build artifacts
+        run: |
+          if [ ! -f "index.js" ] || [ ! -f "without-countries.js" ]; then
+            echo "❌ Required build artifacts missing"
+            exit 1
+          fi
+          echo "✅ Build artifacts verified"
+
+      - name: 🔐 Run security audit
+        run: |
+          npm audit --audit-level=high || echo "⚠️ Security audit warnings - review before proceeding"
 
       - name: ⚡ Execute rapid testing for emergency validation
         run: |
@@ -49,21 +92,34 @@ jobs:
           "
 
       - name: 🚨 Deploy emergency hotfix to NPM registry
+        id: npm_publish
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
       - name: 📊 Generate emergency publication summary
         run: |
-          echo "🚨 **EMERGENCY PUBLISH COMPLETED**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: $(node -p "require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
-          echo "- **Reason**: ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Published by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **Follow-up required**: Create proper release and update changelog" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.npm_publish.outcome }}" == "success" ]; then
+            echo "🚨 **EMERGENCY PUBLISH COMPLETED**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version**: $(node -p "require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reason**: ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Published by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Follow-up required**: Create proper release and update changelog" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **EMERGENCY PUBLISH FAILED**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Package**: @setkernel/dotted-map-next" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version**: $(node -p "require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reason**: ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Failure**: NPM publish failed - check logs for details" >> $GITHUB_STEP_SUMMARY
+            echo "- **Manual Fix**: Run \`npm publish --access public --otp=YOUR_CODE\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
   block-invalid-emergency-request:
     name: 🚫 Block Invalid Emergency Publication Request

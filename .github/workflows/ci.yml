@@ -36,7 +36,7 @@ jobs:
 
       - name: 🎨 Run code formatting and linting checks
         run: |
-          npm run format:check || echo "⚠️  Code formatting issues found"
+          npm run format:check
           
       - name: 🔨 Build production package
         run: npm run build
@@ -46,6 +46,10 @@ jobs:
 
       - name: 🔬 Execute comprehensive test suite
         run: npm run test:enhanced
+
+      - name: 🔐 Run security audit
+        run: |
+          npm audit --audit-level=high || echo "⚠️ Security vulnerabilities found - review required"
 
       - name: 📊 Analyze bundle size metrics
         run: |
@@ -89,6 +93,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [run-quality-assurance-checks]
     if: needs.run-quality-assurance-checks.result == 'success' && github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: 🔄 Enable auto-merge for verified dependency updates
         run: gh pr merge --auto --merge "$PR_URL"

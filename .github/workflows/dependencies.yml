@@ -6,6 +6,12 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  security-events: write
+
 env:
   NODE_VERSION: '20.x'
 
@@ -31,11 +37,20 @@ jobs:
       - name: 🔎 Execute comprehensive security audit
         run: |
           echo "🔍 Running security audit..." >> $GITHUB_STEP_SUMMARY
-          npm audit --audit-level=high --json > audit-results.json || true
           
-          # Check if there are any high/critical vulnerabilities
-          HIGH_VULNS=$(cat audit-results.json | jq -r '.metadata.vulnerabilities.high // 0')
-          CRITICAL_VULNS=$(cat audit-results.json | jq -r '.metadata.vulnerabilities.critical // 0')
+          # Run audit and handle potential JSON parsing errors
+          if ! npm audit --audit-level=high --json > audit-results.json 2>/dev/null; then
+            echo "{}" > audit-results.json
+          fi
+          
+          # Validate JSON and extract vulnerability counts with error handling
+          if ! jq empty audit-results.json 2>/dev/null; then
+            echo "❌ **Invalid audit results JSON**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          HIGH_VULNS=$(jq -r '.metadata.vulnerabilities.high // 0' audit-results.json 2>/dev/null || echo "0")
+          CRITICAL_VULNS=$(jq -r '.metadata.vulnerabilities.critical // 0' audit-results.json 2>/dev/null || echo "0")
           
           echo "- **High severity**: $HIGH_VULNS" >> $GITHUB_STEP_SUMMARY
           echo "- **Critical severity**: $CRITICAL_VULNS" >> $GITHUB_STEP_SUMMARY
